@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Ecodiagnóstico — Salasaca, Tungurahua</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --verde: #1e4d2b;
+  --verde2: #2d6a3f;
+  --dorado: #c9a84c;
+  --tierra: #8b5e3c;
+  --crema: #f7f3ec;
+  --texto: #1a1a1a;
+  --gris: #555;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:var(--crema); color:var(--texto); }
+
+nav {
+  background:var(--verde); position:sticky; top:0; z-index:1000;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 2rem; height:56px;
+}
+nav .logo { color:var(--dorado); font-family:'Playfair Display',serif; font-size:1.05rem; font-weight:700; }
+nav ul { list-style:none; display:flex; gap:1.5rem; }
+nav ul li a { color:rgba(255,255,255,.85); text-decoration:none; font-size:.85rem; font-weight:500; transition:color .2s; }
+nav ul li a:hover { color:var(--dorado); }
+
+.hero {
+  background:linear-gradient(135deg,var(--verde) 0%,var(--verde2) 60%,#4a8c3f 100%);
+  color:white; padding:5rem 2rem 4rem; text-align:center; position:relative; overflow:hidden;
+}
+.hero-badge {
+  display:inline-block; background:rgba(201,168,76,.2); border:1px solid var(--dorado);
+  color:var(--dorado); padding:.3rem 1rem; border-radius:20px;
+  font-size:.78rem; letter-spacing:.1em; text-transform:uppercase; margin-bottom:1.2rem;
+}
+.hero h1 { font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3.4rem); font-weight:900; line-height:1.15; margin-bottom:.8rem; }
+.hero h1 span { color:var(--dorado); }
+.hero p { font-size:1rem; opacity:.8; max-width:580px; margin:0 auto 2rem; line-height:1.7; }
+.hero-stats { display:flex; justify-content:center; gap:3rem; flex-wrap:wrap; margin-top:2rem; }
+.hero-stat { text-align:center; }
+.hero-stat strong { display:block; font-size:2rem; font-weight:700; color:var(--dorado); }
+.hero-stat span { font-size:.78rem; opacity:.7; text-transform:uppercase; letter-spacing:.05em; }
+
+section { padding:4rem 2rem; max-width:1100px; margin:0 auto; }
+.section-label {
+  display:inline-flex; align-items:center; gap:.5rem;
+  background:var(--verde); color:white; padding:.3rem .9rem; border-radius:4px;
+  font-size:.75rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; margin-bottom:1rem;
+}
+.section-num {
+  background:var(--dorado); color:var(--verde); width:20px; height:20px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700;
+}
+h2 { font-family:'Playfair Display',serif; font-size:clamp(1.6rem,3vw,2.2rem); font-weight:700; margin-bottom:.5rem; color:var(--verde); }
+.subtitle { color:var(--gris); font-size:.95rem; margin-bottom:2rem; line-height:1.6; }
+
+.map-container { border-radius:12px; overflow:hidden; border:2px solid rgba(30,77,43,.15); box-shadow:0 4px 24px rgba(0,0,0,.08); }
+#mapa-riesgo { height:450px; width:100%; display:block; }
+#mapa-cultural { height:450px; width:100%; display:block; }
+
+.leyenda { display:flex; gap:.8rem; flex-wrap:wrap; margin-top:1rem; }
+.leyenda-item { display:flex; align-items:center; gap:.4rem; font-size:.82rem; color:var(--gris); }
+.leyenda-color { width:16px; height:16px; border-radius:3px; flex-shrink:0; }
+
+.info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-top:1.5rem; }
+.info-card { background:white; border-radius:10px; padding:1.2rem; border-left:4px solid var(--verde); box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.info-card h4 { font-size:.78rem; color:var(--gris); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.4rem; }
+.info-card p { font-size:1.25rem; font-weight:600; color:var(--verde); }
+
+.artesania-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.artesania-card { background:white; border-radius:10px; padding:1.4rem; box-shadow:0 2px 10px rgba(0,0,0,.07); border-top:3px solid var(--dorado); transition:transform .2s; }
+.artesania-card:hover { transform:translateY(-3px); }
+.artesania-icon { font-size:2rem; margin-bottom:.6rem; }
+.artesania-card h4 { font-weight:600; margin-bottom:.4rem; color:var(--verde); }
+.artesania-card p { font-size:.83rem; color:var(--gris); line-height:1.5; }
+
+.charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:2rem; margin-top:1.5rem; }
+.chart-card { background:white; border-radius:12px; padding:1.5rem; box-shadow:0 2px 12px rgba(0,0,0,.07); }
+.chart-card h4 { font-size:.88rem; font-weight:600; color:var(--verde); margin-bottom:1rem; text-align:center; }
+.chart-wrap { position:relative; height:260px; }
+
+.tabla-comp { width:100%; border-collapse:collapse; margin-top:1.5rem; background:white; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.07); }
+.tabla-comp thead { background:var(--verde); color:white; }
+.tabla-comp th,.tabla-comp td { padding:.9rem 1.2rem; text-align:left; font-size:.88rem; }
+.tabla-comp tr:nth-child(even) { background:#f7f9f7; }
+.tabla-comp td:first-child { font-weight:500; color:var(--verde); }
+.badge { padding:.2rem .6rem; border-radius:12px; font-size:.75rem; font-weight:600; margin-left:.3rem; }
+.badge-s { background:#d4edda; color:#155724; }
+.badge-q { background:#cce5ff; color:#004085; }
+
+.divider { width:100%; height:1px; background:linear-gradient(to right,transparent,rgba(30,77,43,.2),transparent); }
+
+footer { background:var(--verde); color:rgba(255,255,255,.7); text-align:center; padding:2rem; font-size:.82rem; margin-top:4rem; }
+footer strong { color:var(--dorado); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Atlas Ecodiagnóstico · Salasaca</div>
+  <ul>
+    <li><a href="#modulo1">Biofísico</a></li>
+    <li><a href="#modulo2">Cultural</a></li>
+    <li><a href="#modulo3">Socioeconómico</a></li>
+  </ul>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Universidad Tecnológica Indoamérica · ITI</div>
+  <h1>Atlas Ecodiagnóstico<br><span>Salasaca, Tungurahua</span></h1>
+  <p>Diagnóstico territorial virtual del pueblo kichwa Salasaca: análisis biofísico, ecosistema cultural y situación socioeconómica comparativa con Quisapincha.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><strong>12 km²</strong><span>Extensión territorial</span></div>
+    <div class="hero-stat"><strong>12.000</strong><span>Habitantes aprox.</span></div>
+    <div class="hero-stat"><strong>2.600 m</strong><span>Altitud promedio</span></div>
+    <div class="hero-stat"><strong>3</strong><span>Módulos analizados</span></div>
+  </div>
+</div>
+
+<!-- MÓDULO 1 -->
+<section id="modulo1">
+  <div class="section-label"><span class="section-num">1</span> Módulo · Diagnóstico Biofísico</div>
+  <h2>Mapa de Riesgo de Erosión</h2>
+  <p class="subtitle">Superposición virtual del mapa de pendientes con la cobertura vegetal del territorio Salasaca. Haz clic en cada zona para ver el análisis detallado.</p>
+  <div class="map-container"><div id="mapa-riesgo"></div></div>
+  <div class="leyenda">
+    <div class="leyenda-item"><div class="leyenda-color" style="background:#c0392b"></div>Riesgo alto de erosión</div>
+    <div class="leyenda-item"><div class="leyenda-color" style="background:#e67e22"></div>Riesgo medio</div>
+    <div class="leyenda-item"><div class="leyenda-color" style="background:#27ae60"></div>Riesgo bajo</div>
+    <div class="leyenda-item"><div class="leyenda-color" style="background:#2980b9"></div>Cuerpos de agua</div>
+  </div>
+  <div class="info-grid">
+    <div class="info-card"><h4>Pendiente promedio</h4><p>18 – 35°</p></div>
+    <div class="info-card"><h4>Cobertura vegetal</h4><p>42% del área</p></div>
+    <div class="info-card"><h4>Zona riesgo alto</h4><p>~28% del área</p></div>
+    <div class="info-card"><h4>Tipo de suelo</h4><p>Andosol · Inceptisol</p></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- MÓDULO 2 -->
+<section id="modulo2">
+  <div class="section-label"><span class="section-num">2</span> Módulo · Ecosistema Cultural</div>
+  <h2>Etnografía Digital · Tapices Salasaca</h2>
+  <p class="subtitle">Centros artesanales georreferenciados mediante investigación en archivos digitales. Haz clic en cada punto del mapa para conocer su valor cultural.</p>
+  <div class="artesania-grid">
+    <div class="artesania-card">
+      <div class="artesania-icon">🧶</div>
+      <h4>Tapices Salasaca</h4>
+      <p>Tejidos en telar de pedal con lana de borrego. Representan figuras del mundo andino: cóndores, chakanas y escenas de la Pachamama. Técnica heredada por siglos.</p>
+    </div>
+    <div class="artesania-card">
+      <div class="artesania-icon">🎨</div>
+      <h4>Simbología en los tejidos</h4>
+      <p>El rojo representa la vida, el negro la tierra fértil, el blanco la pureza. Los diseños geométricos narran historias de los ancestros kichwa Salasaca.</p>
+    </div>
+    <div class="artesania-card">
+      <div class="artesania-icon">🏛️</div>
+      <h4>Centros artesanales</h4>
+      <p>Más de 15 talleres activos. La Asociación de Artesanos Salasaca agrupa a más de 200 tejedores que exportan sus obras a Europa y Norteamérica.</p>
+    </div>
+  </div>
+  <div class="map-container"><div id="mapa-cultural"></div></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- MÓDULO 3 -->
+<section id="modulo3">
+  <div class="section-label"><span class="section-num">3</span> Módulo · Panel Socioeconómico</div>
+  <h2>Salasaca vs. Quisapincha</h2>
+  <p class="subtitle">Comparación de indicadores socioeconómicos entre las dos comunidades de Tungurahua, usando gráficos de barras, radar y dona.</p>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h4>Acceso a servicios básicos (%)</h4>
+      <div class="chart-wrap"><canvas id="chartBarras"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>Perfil socioeconómico (Radar)</h4>
+      <div class="chart-wrap"><canvas id="chartRadar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>Actividades económicas — Salasaca</h4>
+      <div class="chart-wrap"><canvas id="chartDona"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>Nivel educativo (%)</h4>
+      <div class="chart-wrap"><canvas id="chartLinea"></canvas></div>
+    </div>
+  </div>
+
+  <table class="tabla-comp">
+    <thead>
+      <tr>
+        <th>Indicador</th>
+        <th>Salasaca <span class="badge badge-s">S</span></th>
+        <th>Quisapincha <span class="badge badge-q">Q</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Población estimada</td><td>12.000 hab.</td><td>18.500 hab.</td></tr>
+      <tr><td>Acceso a agua potable</td><td>78%</td><td>85%</td></tr>
+      <tr><td>Acceso a electricidad</td><td>92%</td><td>95%</td></tr>
+      <tr><td>Educación básica completa</td><td>65%</td><td>72%</td></tr>
+      <tr><td>Actividad artesanal (PEA)</td><td>60%</td><td>35%</td></tr>
+      <tr><td>Actividad agrícola (PEA)</td><td>30%</td><td>50%</td></tr>
+      <tr><td>Ingreso mensual promedio</td><td>$320 USD</td><td>$280 USD</td></tr>
+      <tr><td>Índice de pobreza</td><td>38%</td><td>44%</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  <p><strong>Atlas Ecodiagnóstico Virtual · Salasaca, Tungurahua</strong></p>
+  <p style="margin-top:.4rem">Universidad Tecnológica Indoamérica · Ingeniería en Tecnologías de la Información · 2025</p>
+  <p style="margin-top:.4rem">Desarrollado con Leaflet.js · Chart.js · OpenStreetMap</p>
+</footer>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+
+// MAPA 1: RIESGO
+const m1 = L.map('mapa-riesgo',{scrollWheelZoom:false}).setView([-1.3167,-78.5667],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(m1);
+
+[
+  {c:[[-1.305,-78.575],[-1.305,-78.558],[-1.313,-78.558],[-1.313,-78.575]],col:'#c0392b',nivel:'Alto',desc:'Pendientes >30°, escasa cobertura vegetal. Alta susceptibilidad a deslizamientos y pérdida de capa arable.'},
+  {c:[[-1.313,-78.575],[-1.313,-78.558],[-1.322,-78.558],[-1.322,-78.575]],col:'#e67e22',nivel:'Medio',desc:'Pendientes 15-30°. Cobertura vegetal parcial. Riesgo moderado de erosión hídrica en época lluviosa.'},
+  {c:[[-1.322,-78.575],[-1.322,-78.558],[-1.332,-78.558],[-1.332,-78.575]],col:'#27ae60',nivel:'Bajo',desc:'Pendientes <15°. Buena cobertura vegetal. Suelo estable con prácticas agrícolas ancestrales adecuadas.'},
+  {c:[[-1.318,-78.568],[-1.318,-78.560],[-1.326,-78.560],[-1.326,-78.568]],col:'#2980b9',nivel:'Río Pachanlica',desc:'Principal fuente hídrica de la comunidad Salasaca. Abastece riego y uso doméstico.'},
+].forEach(z=>{
+  L.polygon(z.c,{color:z.col,fillColor:z.col,fillOpacity:.45,weight:2})
+    .addTo(m1)
+    .bindPopup(`<b style="color:${z.col}">${z.nivel}</b><br><span style="font-size:.83rem">${z.desc}</span>`);
+});
+
+// MAPA 2: CULTURAL
+const m2 = L.map('mapa-cultural').setView([-1.3167,-78.5667],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(m2);
+
+[
+  {lat:-1.3120,lng:-78.5620,nombre:'Taller Artesanal Pilalata',desc:'Taller ancestral especializado en tapices con motivos del cóndor y la chakana. Exporta a Alemania y España.',tipo:'🧶 Tapicería'},
+  {lat:-1.3180,lng:-78.5650,nombre:'Centro Artesanal Chimbacalle',desc:'Agrupa a 45 tejedoras. Produce tapices y prendas con lana de borrego teñida con plantas naturales.',tipo:'🎨 Tejido'},
+  {lat:-1.3200,lng:-78.5600,nombre:'Asociación de Artesanos Salasaca',desc:'Organización con más de 200 miembros. Gestiona comercialización internacional y capacitación ancestral.',tipo:'🏛️ Asociación'},
+  {lat:-1.3100,lng:-78.5680,nombre:'Taller Familiar Masaquiza',desc:'Mantiene viva la técnica del telar de pedal. Reconocido por el Ministerio de Cultura del Ecuador.',tipo:'🧶 Tapicería'},
+  {lat:-1.3230,lng:-78.5630,nombre:'Mercado Artesanal Pelileo',desc:'Punto de venta y exhibición. Recibe turistas nacionales e internacionales cada fin de semana.',tipo:'🛍️ Comercio'},
+  {lat:-1.3155,lng:-78.5710,nombre:'Casa de la Cultura Salasaca',desc:'Preserva la memoria cultural: música, danza, textiles y tradición oral del pueblo kichwa Salasaca.',tipo:'🏺 Cultura'},
+].forEach(p=>{
+  const ic = L.divIcon({
+    html:`<div style="background:#1e4d2b;color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid #c9a84c">${p.tipo[0]}</div>`,
+    className:'',iconSize:[36,36],iconAnchor:[18,18]
+  });
+  L.marker([p.lat,p.lng],{icon:ic}).addTo(m2)
+    .bindPopup(`<b style="color:#1e4d2b">${p.nombre}</b><br><small style="color:#777">${p.tipo}</small><br><span style="font-size:.82rem">${p.desc}</span>`);
+});
+
+// GRÁFICOS
+const S='#1e4d2b', Q='#2980b9', Sa='rgba(30,77,43,.18)', Qa='rgba(41,128,185,.18)';
+
+new Chart(document.getElementById('chartBarras'),{
+  type:'bar',
+  data:{
+    labels:['Agua potable','Electricidad','Alcantarillado','Internet','Salud'],
+    datasets:[
+      {label:'Salasaca',data:[78,92,65,45,70],backgroundColor:S+'cc'},
+      {label:'Quisapincha',data:[85,95,70,55,75],backgroundColor:Q+'cc'}
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}},
+    scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}
+});
+
+new Chart(document.getElementById('chartRadar'),{
+  type:'radar',
+  data:{
+    labels:['Educación','Salud','Economía','Cultura','Infraestructura','Ambiente'],
+    datasets:[
+      {label:'Salasaca',data:[65,70,72,90,68,75],borderColor:S,backgroundColor:Sa,pointBackgroundColor:S},
+      {label:'Quisapincha',data:[72,75,65,60,72,70],borderColor:Q,backgroundColor:Qa,pointBackgroundColor:Q}
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}},
+    scales:{r:{beginAtZero:true,max:100}}}
+});
+
+new Chart(document.getElementById('chartDona'),{
+  type:'doughnut',
+  data:{
+    labels:['Artesanía','Agricultura','Comercio','Servicios','Otros'],
+    datasets:[{data:[60,30,5,3,2],backgroundColor:['#1e4d2b','#2d6a3f','#c9a84c','#8b5e3c','#aaa']}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+});
+
+new Chart(document.getElementById('chartLinea'),{
+  type:'bar',
+  data:{
+    labels:['Sin instrucción','Primaria','Secundaria','Superior'],
+    datasets:[
+      {label:'Salasaca',data:[8,42,35,15],backgroundColor:S+'cc'},
+      {label:'Quisapincha',data:[5,38,38,19],backgroundColor:Q+'cc'}
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}},
+    scales:{y:{beginAtZero:true,max:60,ticks:{callback:v=>v+'%'}}}}
+});
+}); // DOMContentLoaded
+</script>
+</body>
+</html>
